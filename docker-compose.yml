@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: corewatch
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  notification:
+    build:
+      context: .
+      args:
+        PROJECT: src/CoreWatch.NotificationService/CoreWatch.NotificationService.csproj
+        DLL: CoreWatch.NotificationService.dll
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:5002
+    ports:
+      - "5002:5002"
+
+  ingestion:
+    build:
+      context: .
+      args:
+        PROJECT: src/CoreWatch.IngestionService/CoreWatch.IngestionService.csproj
+        DLL: CoreWatch.IngestionService.dll
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:5001
+      ConnectionStrings__CoreWatch: Host=postgres;Port=5432;Database=corewatch;Username=postgres;Password=postgres
+      NotificationService__Url: http://notification:5002/api/notifications/alarm
+      Security__AesKey: core-watch-student-demo-key
+    ports:
+      - "5001:5001"
+    depends_on:
+      - postgres
+      - notification
+
+  consensus:
+    build:
+      context: .
+      args:
+        PROJECT: src/CoreWatch.ConsensusService/CoreWatch.ConsensusService.csproj
+        DLL: CoreWatch.ConsensusService.dll
+    environment:
+      ConnectionStrings__CoreWatch: Host=postgres;Port=5432;Database=corewatch;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - ingestion
+
+  ingress:
+    build:
+      context: .
+      args:
+        PROJECT: src/CoreWatch.Ingress/CoreWatch.Ingress.csproj
+        DLL: CoreWatch.Ingress.dll
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:5000
+      Services__Ingestion: http://ingestion:5001
+      Services__Notification: http://notification:5002
+    ports:
+      - "5080:5000"
+    depends_on:
+      - ingestion
+      - notification
+
+volumes:
+  postgres-data:
