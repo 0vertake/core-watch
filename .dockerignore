@@ -1,0 +1,9 @@
+.git/
+.vs/
+.idea/
+bin/
+obj/
+TestResults/
+.DS_Store
+*.user
+*.suo
