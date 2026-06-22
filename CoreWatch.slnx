@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/CoreWatch.IngestionService/CoreWatch.IngestionService.csproj" />
+    <Project Path="src/CoreWatch.Ingress/CoreWatch.Ingress.csproj" />
     <Project Path="src/CoreWatch.NotificationService/CoreWatch.NotificationService.csproj" />
     <Project Path="src/CoreWatch.Shared/CoreWatch.Shared.csproj" />
   </Folder>
