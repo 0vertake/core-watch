@@ -29,7 +29,7 @@ public class Worker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Greska pri racunanju konsenzusa.");
+                _logger.LogError(ex, "Error while calculating consensus.");
             }
         }
     }
@@ -56,7 +56,7 @@ public class Worker : BackgroundService
 
         if (values.Count == 0)
         {
-            _logger.LogInformation("Nema GOOD merenja za konsenzus u poslednjem minutu.");
+            _logger.LogInformation("No GOOD measurements available for consensus in the last minute.");
             return;
         }
 
@@ -71,7 +71,7 @@ public class Worker : BackgroundService
             if (sensors.TryGetValue(rejectedSensorId, out var sensor))
             {
                 sensor.Quality = DataQuality.BAD;
-                _logger.LogWarning("Senzor {SensorId} oznacen kao BAD zbog neispravnih podataka.", rejectedSensorId);
+                _logger.LogWarning("Sensor {SensorId} marked as BAD due to invalid data.", rejectedSensorId);
             }
         }
 
@@ -110,6 +110,6 @@ public class Worker : BackgroundService
         });
 
         await db.SaveChangesAsync(stoppingToken);
-        _logger.LogInformation("Konsenzus {Value:F2} izracunat iz {Count} merenja.", consensus, accepted.Count);
+        _logger.LogInformation("Consensus {Value:F2} calculated from {Count} measurements.", consensus, accepted.Count);
     }
 }

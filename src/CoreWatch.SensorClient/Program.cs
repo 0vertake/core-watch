@@ -24,7 +24,7 @@ var sensors = Enumerable.Range(1, 8)
 
 Console.WriteLine("CoreWatch SensorClient");
 Console.WriteLine($"Server: {serverBaseUrl}");
-Console.WriteLine("Komande: /block sensor-1, /flood sensor-1, /status, /exit");
+Console.WriteLine("Commands: /block sensor-1, /flood sensor-1, /status, /exit");
 
 await LoadServerMessageIds();
 
@@ -61,7 +61,7 @@ while (true)
         string sensorId = input["/flood ".Length..].Trim();
         var sensor = sensors.FirstOrDefault(x => x.Id.Equals(sensorId, StringComparison.OrdinalIgnoreCase));
         if (sensor is null)
-            Console.WriteLine("Nepoznat senzor.");
+            Console.WriteLine("Unknown sensor.");
         else
             await FloodSensor(sensor);
     }
@@ -91,7 +91,7 @@ async Task SensorLoop(SimulatedSensor sensor, CancellationToken ct)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[{sensor.Id}] greska: {ex.Message}");
+            Console.WriteLine($"[{sensor.Id}] error: {ex.Message}");
             await Task.Delay(1_000, ct);
         }
     }
@@ -111,7 +111,7 @@ async Task ActivationLoop(CancellationToken ct)
                 .Take(5 - activeCount))
             {
                 sensor.IsActive = true;
-                Console.WriteLine($"{sensor.Id} je aktiviran da bi bilo tacno 5 aktivnih senzora.");
+                Console.WriteLine($"{sensor.Id} was activated to keep exactly 5 active sensors.");
             }
         }
         catch (OperationCanceledException)
@@ -161,7 +161,7 @@ async Task LoadServerMessageIds()
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Ne mogu da procitam poslednje MessageId vrednosti sa servera: {ex.Message}");
+        Console.WriteLine($"Could not read the latest MessageId values from the server: {ex.Message}");
     }
 }
 
@@ -170,7 +170,7 @@ async Task BlockSensor(string sensorId)
     var sensor = sensors.FirstOrDefault(x => x.Id.Equals(sensorId, StringComparison.OrdinalIgnoreCase));
     if (sensor is null)
     {
-        Console.WriteLine("Nepoznat senzor.");
+        Console.WriteLine("Unknown sensor.");
         return;
     }
 
@@ -182,15 +182,15 @@ async Task BlockSensor(string sensorId)
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Server blokiranje nije uspelo: {ex.Message}");
+        Console.WriteLine($"Server-side blocking failed: {ex.Message}");
     }
 
-    Console.WriteLine($"{sensor.Id} je lokalno blokiran na 30 sekundi.");
+    Console.WriteLine($"{sensor.Id} was locally blocked for 30 seconds.");
 }
 
 async Task FloodSensor(SimulatedSensor sensor)
 {
-    Console.WriteLine($"{sensor.Id} salje 12 brzih poruka za DoS/rate-limit test.");
+    Console.WriteLine($"{sensor.Id} is sending 12 rapid messages for the DoS/rate-limit test.");
     for (int i = 0; i < 12; i++)
         await SendMeasurement(sensor);
 }
@@ -200,8 +200,8 @@ void PrintStatus()
     foreach (var sensor in sensors.OrderBy(x => x.Id))
     {
         string state = sensor.BlockedUntilUtc > DateTime.UtcNow
-            ? "BLOKIRAN"
-            : sensor.IsActive ? "AKTIVAN" : "STANDBY";
+            ? "BLOCKED"
+            : sensor.IsActive ? "ACTIVE" : "STANDBY";
         Console.WriteLine($"{sensor.Id}: {state}");
     }
 }
@@ -225,7 +225,7 @@ static void WriteMeasurement(string sensorId, double value, int priority, bool a
         _ => oldColor
     };
 
-    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {sensorId}: {value:F2} C, alarm={priority}, server={(accepted ? "OK" : "ODBIJENO")}");
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {sensorId}: {value:F2} C, alarm={priority}, server={(accepted ? "OK" : "REJECTED")}");
     Console.ForegroundColor = oldColor;
 }
 
