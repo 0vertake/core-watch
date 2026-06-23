@@ -23,6 +23,40 @@ app.MapGet("/", () => "CoreWatch IngestionService is running. POST /api/ingest")
 app.MapGet("/api/sensors", async (CoreWatchDbContext db) =>
     await db.Sensors.OrderBy(x => x.Id).ToListAsync());
 
+app.MapGet("/api/measurements", async (
+    CoreWatchDbContext db,
+    int limit = 50,
+    string? sensorId = null,
+    bool consensusOnly = false) =>
+{
+    limit = Math.Clamp(limit, 1, 500);
+    var query = db.Measurements.AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(sensorId))
+        query = query.Where(x => x.SensorId == sensorId);
+
+    if (consensusOnly)
+        query = query.Where(x => x.IsConsensus);
+
+    var items = await query
+        .OrderByDescending(x => x.TimestampUtc)
+        .Take(limit)
+        .ToListAsync();
+
+    return Results.Ok(items);
+});
+
+app.MapGet("/api/alarms", async (CoreWatchDbContext db, int limit = 50) =>
+{
+    limit = Math.Clamp(limit, 1, 500);
+    var items = await db.Alarms
+        .OrderByDescending(x => x.TimestampUtc)
+        .Take(limit)
+        .ToListAsync();
+
+    return Results.Ok(items);
+});
+
 app.MapGet("/api/reports", async (CoreWatchDbContext db) =>
 {
     var latestConsensus = await db.ConsensusValues
@@ -35,7 +69,13 @@ app.MapGet("/api/reports", async (CoreWatchDbContext db) =>
         Alarms = await db.Alarms.CountAsync(),
         ConsensusValues = await db.ConsensusValues.CountAsync(),
         ActiveSensors = await db.Sensors.CountAsync(x => x.IsActive),
-        LatestConsensus = latestConsensus
+        LatestConsensus = latestConsensus,
+        Endpoints = new
+        {
+            Measurements = "/api/measurements?limit=50",
+            Alarms = "/api/alarms?limit=50",
+            Sensors = "/api/sensors"
+        }
     });
 });
 
@@ -159,7 +199,7 @@ static void SeedSensors(CoreWatchDbContext db)
             Id = $"sensor-{i}",
             MinTemperature = 250,
             MaxTemperature = 850,
-            Quality = DataQuality.GOOD,
+            Quality = i == 7 ? DataQuality.UNCERTAIN : DataQuality.GOOD,
             AlarmLimit1 = 550,
             AlarmLimit2 = 650,
             AlarmLimit3 = 750,
@@ -193,16 +233,7 @@ static async Task ActivateStandbySensor(CoreWatchDbContext db)
 
 static void WriteAlarm(string sensorId, double value, int priority)
 {
-    var oldColor = Console.ForegroundColor;
-    Console.ForegroundColor = priority switch
-    {
-        1 => ConsoleColor.Yellow,
-        2 => ConsoleColor.DarkYellow,
-        3 => ConsoleColor.Red,
-        _ => oldColor
-    };
-    Console.WriteLine($"[ALARM P{priority}] {sensorId}: {value:F2} C");
-    Console.ForegroundColor = oldColor;
+    AlarmConsole.WriteLine(priority, $"[ALARM P{priority}] {sensorId}: {value:F2} C");
 }
 
 static async Task NotifyAlarm(

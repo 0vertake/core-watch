@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CoreWatch SignalR demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 720px; }
+    #status { padding: 0.5rem 0.75rem; border-radius: 6px; background: #f0f0f0; }
+    #status.connected { background: #e8f5e9; }
+    #status.reconnecting { background: #fff8e1; }
+    #status.error { background: #ffebee; }
+    #alarms { list-style: none; padding: 0; margin-top: 1rem; }
+    #alarms li {
+      padding: 0.4rem 0.6rem;
+      margin-bottom: 0.35rem;
+      border-radius: 4px;
+      border-left: 4px solid #ccc;
+      background: #fafafa;
+      animation: fadeIn 0.3s ease;
+    }
+    #alarms li.p1 { border-left-color: #f9a825; background: #fffde7; }
+    #alarms li.p2 { border-left-color: #ef6c00; background: #fff3e0; }
+    #alarms li.p3 { border-left-color: #c62828; background: #ffebee; font-weight: 600; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .hint { color: #666; font-size: 0.9rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>CoreWatch — SignalR alarms</h1>
+  <p id="status">Connecting...</p>
+  <p class="hint">Live alarms only (not history). New items appear at the top when sensors send readings above 550 / 650 / 750 °C.</p>
+  <ul id="alarms"></ul>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+  <script>
+    const status = document.getElementById('status');
+    const list = document.getElementById('alarms');
+    const maxItems = 30;
+    let alarmCount = 0;
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl('/alarms')
+      .withAutomaticReconnect()
+      .build();
+
+    function setStatus(text, cls) {
+      status.textContent = text;
+      status.className = cls || '';
+    }
+
+    connection.on('AlarmRaised', alarm => {
+      alarmCount++;
+      const li = document.createElement('li');
+      li.className = 'p' + alarm.priority;
+      const received = new Date().toLocaleTimeString();
+      li.textContent = `[P${alarm.priority}] ${alarm.sensorId}: ${alarm.value.toFixed(2)} C (measured ${alarm.timestampUtc}, received ${received})`;
+      list.prepend(li);
+      while (list.children.length > maxItems) {
+        list.removeChild(list.lastChild);
+      }
+      setStatus(`Connected — ${alarmCount} alarm(s) received (latest: P${alarm.priority} ${alarm.sensorId})`, 'connected');
+    });
+
+    connection.onreconnecting(() => setStatus('Reconnecting to /alarms...', 'reconnecting'));
+    connection.onreconnected(() => setStatus('Reconnected — waiting for new alarms...', 'connected'));
+    connection.onclose(() => setStatus('Disconnected from /alarms. Refresh the page.', 'error'));
+
+    connection.start()
+      .then(() => setStatus('Connected — waiting for new alarms...', 'connected'))
+      .catch(err => setStatus('Error: ' + err, 'error'));
+  </script>
+</body>
+</html>

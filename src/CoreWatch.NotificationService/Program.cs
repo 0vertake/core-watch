@@ -7,7 +7,10 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "CoreWatch NotificationService is running. SignalR hub: /alarms");
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.MapGet("/", () => "CoreWatch NotificationService is running. SignalR hub: /alarms, demo: /demo.html");
 app.MapHub<AlarmHub>("/alarms");
 
 app.MapPost("/api/notifications/alarm", async (
@@ -23,16 +26,8 @@ app.Run();
 
 static void WriteAlarm(AlarmNotificationDto alarm)
 {
-    var oldColor = Console.ForegroundColor;
-    Console.ForegroundColor = alarm.Priority switch
-    {
-        1 => ConsoleColor.Yellow,
-        2 => ConsoleColor.DarkYellow,
-        3 => ConsoleColor.Red,
-        _ => oldColor
-    };
-    Console.WriteLine($"[NOTIFICATION P{alarm.Priority}] {alarm.SensorId}: {alarm.Value:F2} C");
-    Console.ForegroundColor = oldColor;
+    AlarmConsole.WriteLine(alarm.Priority,
+        $"[NOTIFICATION P{alarm.Priority}] {alarm.SensorId}: {alarm.Value:F2} C");
 }
 
 public class AlarmHub : Hub

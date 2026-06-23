@@ -46,6 +46,42 @@ builder.Services.AddReverseProxy()
         },
         new Yarp.ReverseProxy.Configuration.RouteConfig
         {
+            RouteId = "measurements",
+            ClusterId = "ingestion",
+            Match = new Yarp.ReverseProxy.Configuration.RouteMatch
+            {
+                Path = "/api/measurements"
+            }
+        },
+        new Yarp.ReverseProxy.Configuration.RouteConfig
+        {
+            RouteId = "alarms-api",
+            ClusterId = "ingestion",
+            Match = new Yarp.ReverseProxy.Configuration.RouteMatch
+            {
+                Path = "/api/alarms"
+            }
+        },
+        new Yarp.ReverseProxy.Configuration.RouteConfig
+        {
+            RouteId = "demo",
+            ClusterId = "notification",
+            Match = new Yarp.ReverseProxy.Configuration.RouteMatch
+            {
+                Path = "/demo.html"
+            }
+        },
+        new Yarp.ReverseProxy.Configuration.RouteConfig
+        {
+            RouteId = "alarms-hub",
+            ClusterId = "notification",
+            Match = new Yarp.ReverseProxy.Configuration.RouteMatch
+            {
+                Path = "/alarms"
+            }
+        },
+        new Yarp.ReverseProxy.Configuration.RouteConfig
+        {
             RouteId = "notifications",
             ClusterId = "notification",
             Match = new Yarp.ReverseProxy.Configuration.RouteMatch
@@ -75,7 +111,7 @@ builder.Services.AddReverseProxy()
 
 var app = builder.Build();
 
-app.MapGet("/", () => "CoreWatch Ingress is running. Routes: /api/ingest, /api/sensors, /alarms");
+app.MapGet("/", () => "CoreWatch Ingress is running. Routes: /api/ingest, /api/sensors, /api/measurements, /api/alarms, /api/reports, /alarms, /demo.html");
 app.MapReverseProxy();
 
 app.Run();

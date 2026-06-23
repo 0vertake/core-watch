@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using CoreWatch.Shared;
 
-string serverBaseUrl = args.Length > 0 ? args[0].TrimEnd('/') : "http://localhost:5000";
+string serverBaseUrl = args.Length > 0 ? args[0].TrimEnd('/') : "http://localhost:5080";
 string aesKey = Environment.GetEnvironmentVariable("COREWATCH_AES_KEY")
     ?? "core-watch-student-demo-key";
 
@@ -14,12 +14,13 @@ var sensors = Enumerable.Range(1, 8)
         id: $"sensor-{i}",
         minTemperature: 250,
         maxTemperature: 850,
-        quality: DataQuality.GOOD,
+        quality: i == 7 ? DataQuality.UNCERTAIN : DataQuality.GOOD,
         alarmLimit1: 550,
         alarmLimit2: 650,
         alarmLimit3: 750,
         isActive: i <= 5,
-        isMalicious: i == 5))
+        isMalicious: i == 5,
+        isUncertain: i == 7))
     .ToList();
 
 Console.WriteLine("CoreWatch SensorClient");
@@ -129,7 +130,7 @@ async Task SendMeasurement(SimulatedSensor sensor)
         sensor.Id,
         value,
         DateTime.UtcNow,
-        sensor.Quality,
+        sensor.CurrentQuality(),
         priority);
 
     long messageId = Interlocked.Increment(ref sensor.MessageId);
@@ -216,17 +217,18 @@ static int GetAlarmPriority(SimulatedSensor sensor, double value)
 
 static void WriteMeasurement(string sensorId, double value, int priority, bool accepted)
 {
-    var oldColor = Console.ForegroundColor;
-    Console.ForegroundColor = priority switch
+    string alarmLabel = priority switch
     {
-        1 => ConsoleColor.Yellow,
-        2 => ConsoleColor.DarkYellow,
-        3 => ConsoleColor.Red,
-        _ => oldColor
+        1 => "yellow",
+        2 => "orange",
+        3 => "red",
+        _ => "none"
     };
 
-    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {sensorId}: {value:F2} C, alarm={priority}, server={(accepted ? "OK" : "REJECTED")}");
-    Console.ForegroundColor = oldColor;
+    string message =
+        $"[{DateTime.Now:HH:mm:ss}] {sensorId}: {value:F2} C, alarm={priority} ({alarmLabel}), server={(accepted ? "OK" : "REJECTED")}";
+
+    AlarmConsole.WriteLine(priority, message);
 }
 
 public class SimulatedSensor
@@ -240,7 +242,8 @@ public class SimulatedSensor
         double alarmLimit2,
         double alarmLimit3,
         bool isActive,
-        bool isMalicious)
+        bool isMalicious,
+        bool isUncertain)
     {
         Id = id;
         MinTemperature = minTemperature;
@@ -251,6 +254,7 @@ public class SimulatedSensor
         AlarmLimit3 = alarmLimit3;
         IsActive = isActive;
         IsMalicious = isMalicious;
+        IsUncertain = isUncertain;
         PrivateKey = RSA.Create(2048);
         PublicKeyPem = PrivateKey.ExportRSAPublicKeyPem();
     }
@@ -263,11 +267,20 @@ public class SimulatedSensor
     public double AlarmLimit2 { get; }
     public double AlarmLimit3 { get; }
     public bool IsMalicious { get; }
+    public bool IsUncertain { get; }
     public bool IsActive { get; set; }
     public DateTime BlockedUntilUtc { get; set; }
     public long MessageId;
     public RSA PrivateKey { get; }
     public string PublicKeyPem { get; }
+
+    public DataQuality CurrentQuality()
+    {
+        if (IsUncertain && Random.Shared.Next(0, 3) == 0)
+            return DataQuality.UNCERTAIN;
+
+        return Quality;
+    }
 
     public double NextTemperature()
     {

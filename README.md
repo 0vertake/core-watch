@@ -95,6 +95,63 @@ Useful `SensorClient` commands:
 /exit            stop the simulator
 ```
 
+## Two-Machine Demo
+
+Use this when the server runs on one laptop and `SensorClient` runs on another. Only **Ingress port 5080** needs to be reachable. API routes, SignalR (`/alarms`), and the browser demo (`/demo.html`) all go through that single entry point.
+
+### Option A — ngrok (recommended)
+
+Works across different networks and avoids LAN IP or firewall issues. Requires [ngrok](https://ngrok.com/) and an internet connection.
+
+On the server machine:
+
+```bash
+docker compose up --build -d
+ngrok http 5080
+```
+
+Copy the public URL from the ngrok terminal (for example `https://abc123.ngrok-free.app`).
+
+On the second machine:
+
+```bash
+dotnet run --project src/CoreWatch.SensorClient -- https://abc123.ngrok-free.app
+```
+
+SignalR alarm demo in the browser:
+
+```text
+https://abc123.ngrok-free.app/demo.html
+```
+
+Keep the `ngrok` terminal open for the whole demo. On the free plan the URL changes each time you restart ngrok.
+
+### Option B — LAN IP (same Wi-Fi)
+
+Use this when both laptops are on the same network and can reach each other directly.
+
+On the server machine:
+
+```bash
+docker compose up --build -d
+ipconfig getifaddr en0   # macOS Wi-Fi
+# or: hostname -I        # Linux
+```
+
+On the second machine:
+
+```bash
+dotnet run --project src/CoreWatch.SensorClient -- http://192.168.1.10:5080
+```
+
+SignalR alarm demo in the browser:
+
+```text
+http://192.168.1.10:5080/demo.html
+```
+
+Replace `192.168.1.10` with the server machine's actual IP address.
+
 ## Run Without Docker
 
 Create a local PostgreSQL database named `corewatch` with username `postgres` and password `postgres`.
@@ -145,8 +202,11 @@ dotnet run --project src/CoreWatch.SensorClient -- http://<minikube-ip>:30080
 - `POST /api/ingest` accepts signed and encrypted sensor measurements.
 - `GET /api/sensors` returns registered sensor state.
 - `POST /api/sensors/{sensorId}/block` blocks a sensor for 30 seconds.
+- `GET /api/measurements?limit=50` returns historical measurements.
+- `GET /api/alarms?limit=50` returns alarm history.
 - `GET /api/reports` returns measurement, alarm, active sensor, and consensus counters.
 - `/alarms` exposes the SignalR alarm hub through ingress.
+- `/demo.html` shows live SignalR alarms in the browser.
 
 ## Database
 
