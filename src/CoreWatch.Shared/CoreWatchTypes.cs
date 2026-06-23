@@ -156,7 +156,7 @@ public static class CryptoService
 
         if (!VerifySignature(envelope))
         {
-            error = "Digitalni potpis nije validan.";
+            error = "The digital signature is not valid.";
             return false;
         }
 
@@ -180,7 +180,7 @@ public static class CryptoService
 
             if (payload is null || payload.SensorId != envelope.SensorId)
             {
-                error = "Sadrzaj poruke ne odgovara senzoru.";
+                error = "The message content does not match the sensor.";
                 return false;
             }
 
@@ -188,7 +188,7 @@ public static class CryptoService
         }
         catch (Exception ex)
         {
-            error = $"Poruka ne moze da se desifruje: {ex.Message}";
+            error = $"The message cannot be decrypted: {ex.Message}";
             return false;
         }
     }

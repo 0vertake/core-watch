@@ -18,7 +18,7 @@ var app = builder.Build();
 
 await EnsureDatabaseReady(app.Services);
 
-app.MapGet("/", () => "CoreWatch IngestionService radi. POST /api/ingest");
+app.MapGet("/", () => "CoreWatch IngestionService is running. POST /api/ingest");
 
 app.MapGet("/api/sensors", async (CoreWatchDbContext db) =>
     await db.Sensors.OrderBy(x => x.Id).ToListAsync());
@@ -43,13 +43,13 @@ app.MapPost("/api/sensors/{sensorId}/block", async (string sensorId, CoreWatchDb
 {
     var sensor = await db.Sensors.FindAsync(sensorId);
     if (sensor is null)
-        return Results.NotFound("Senzor ne postoji.");
+        return Results.NotFound("Sensor does not exist.");
 
     sensor.IsActive = false;
     sensor.BlockedUntilUtc = DateTime.UtcNow.AddSeconds(30);
     await ActivateStandbySensor(db);
     await db.SaveChangesAsync();
-    return Results.Ok($"{sensorId} je blokiran na 30 sekundi.");
+    return Results.Ok($"{sensorId} has been blocked for 30 seconds.");
 });
 
 app.MapPost("/api/ingest", async (
@@ -62,7 +62,7 @@ app.MapPost("/api/ingest", async (
     var now = DateTime.UtcNow;
     var sensor = await db.Sensors.FindAsync(envelope.SensorId);
     if (sensor is null)
-        return Results.NotFound(new IngestResult(false, "Nepoznat senzor."));
+        return Results.NotFound(new IngestResult(false, "Unknown sensor."));
 
     if (sensor.BlockedUntilUtc > now)
         return Results.StatusCode(StatusCodes.Status429TooManyRequests);
@@ -77,13 +77,13 @@ app.MapPost("/api/ingest", async (
     }
 
     if (!sensor.IsActive)
-        return Results.BadRequest(new IngestResult(false, "Senzor trenutno nije aktivan."));
+        return Results.BadRequest(new IngestResult(false, "Sensor is not currently active."));
 
     if (Math.Abs((now - envelope.TimestampUtc).TotalMinutes) > 2)
-        return Results.BadRequest(new IngestResult(false, "Timestamp poruke nije validan."));
+        return Results.BadRequest(new IngestResult(false, "Message timestamp is not valid."));
 
     if (envelope.MessageId <= sensor.LastMessageId)
-        return Results.BadRequest(new IngestResult(false, "Replay poruka je odbijena."));
+        return Results.BadRequest(new IngestResult(false, "Replay message rejected."));
 
     string aesKey = configuration["Security:AesKey"] ?? "core-watch-student-demo-key";
     if (!CryptoService.TryReadPayload(envelope, aesKey, out var payload, out string error) || payload is null)
@@ -121,7 +121,7 @@ app.MapPost("/api/ingest", async (
     }
 
     await db.SaveChangesAsync();
-    return Results.Ok(new IngestResult(true, "Merenje je primljeno."));
+    return Results.Ok(new IngestResult(true, "Measurement received."));
 });
 
 app.Run();
@@ -140,7 +140,7 @@ static async Task EnsureDatabaseReady(IServiceProvider services)
         }
         catch (Exception ex) when (attempt < 10)
         {
-            Console.WriteLine($"Baza nije spremna, pokusaj {attempt}/10: {ex.Message}");
+            Console.WriteLine($"Database is not ready, attempt {attempt}/10: {ex.Message}");
             await Task.Delay(2_000);
         }
     }
@@ -224,7 +224,7 @@ static async Task NotifyAlarm(
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"NotificationService nije dostupan: {ex.Message}");
+        Console.WriteLine($"NotificationService is not available: {ex.Message}");
     }
 }
 
@@ -277,7 +277,7 @@ public class SensorMonitorService : BackgroundService
                 foreach (var sensor in inactive)
                 {
                     sensor.IsActive = false;
-                    Console.WriteLine($"Senzor {sensor.Id} je neaktivan duze od 10 sekundi.");
+                    Console.WriteLine($"Sensor {sensor.Id} has been inactive for more than 10 seconds.");
                 }
 
                 await ActivateStandbySensorAsync(db, stoppingToken);
@@ -289,7 +289,7 @@ public class SensorMonitorService : BackgroundService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Greska u SensorMonitorService: {ex.Message}");
+                Console.WriteLine($"Error in SensorMonitorService: {ex.Message}");
             }
         }
     }

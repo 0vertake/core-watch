@@ -75,7 +75,7 @@ builder.Services.AddReverseProxy()
 
 var app = builder.Build();
 
-app.MapGet("/", () => "CoreWatch Ingress radi. Rute: /api/ingest, /api/sensors, /alarms");
+app.MapGet("/", () => "CoreWatch Ingress is running. Routes: /api/ingest, /api/sensors, /alarms");
 app.MapReverseProxy();
 
 app.Run();

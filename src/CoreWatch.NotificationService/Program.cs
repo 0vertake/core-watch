@@ -7,7 +7,7 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "CoreWatch NotificationService radi. SignalR hub: /alarms");
+app.MapGet("/", () => "CoreWatch NotificationService is running. SignalR hub: /alarms");
 app.MapHub<AlarmHub>("/alarms");
 
 app.MapPost("/api/notifications/alarm", async (
@@ -16,7 +16,7 @@ app.MapPost("/api/notifications/alarm", async (
 {
     WriteAlarm(alarm);
     await hub.Clients.All.SendAsync("AlarmRaised", alarm);
-    return Results.Ok("Alarm poslat SignalR klijentima.");
+    return Results.Ok("Alarm sent to SignalR clients.");
 });
 
 app.Run();
@@ -31,7 +31,7 @@ static void WriteAlarm(AlarmNotificationDto alarm)
         3 => ConsoleColor.Red,
         _ => oldColor
     };
-    Console.WriteLine($"[NOTIFIKACIJA P{alarm.Priority}] {alarm.SensorId}: {alarm.Value:F2} C");
+    Console.WriteLine($"[NOTIFICATION P{alarm.Priority}] {alarm.SensorId}: {alarm.Value:F2} C");
     Console.ForegroundColor = oldColor;
 }
 
